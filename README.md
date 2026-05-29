@@ -127,6 +127,13 @@ Work with animation assets and Blueprints:
 - Configure state machines and blend spaces
 - Set up animation montages and notifies
 - Animation layer and pose blending
+- **Inspect montages and sequences** — sections, slot tracks, AnimNotify / NotifyState events, sync markers
+
+### 🌲 BehaviorTree & Blackboard Inspection
+Read-only inspection of AI assets that aren't Blueprints:
+- Recursive node-tree dump for BehaviorTree assets (composites, decorators, services, tasks)
+- Surface source-Blueprint paths for `BTT_*` / `BTD_*` / `BTS_*` Blueprint nodes
+- Blackboard key dump with canonical types, parent-chain walk, inheritance annotations
 
 ### 🔤 Font Tools
 Generate and manage fonts for UI:
@@ -176,6 +183,7 @@ Manage actors and the editor environment:
 - Query and modify actor properties
 - Performance profiling (FPS, GPU time, draw calls, memory)
 - Execute console commands with captured output
+- **Universal asset dump** (`dump_asset`) — T3D text for any asset type that doesn't have a typed metadata tool yet
 
 ### 📁 Project Organization
 Organize assets, inputs, and project structure:
@@ -206,7 +214,8 @@ Comprehensive guides for all tool categories:
 - **[Material Tools](Docs/Material-Tools.md)** - Creating materials, expressions, and Material Instances
 - **[Niagara Tools](Docs/Niagara-Tools.md)** - Building particle effects and VFX systems
 - **[Sound Tools](Docs/Sound-Tools.md)** - MetaSound procedural audio design
-- **[Animation Tools](Docs/Animation-Tools.md)** - Animation Blueprints, state machines, and montages
+- **[Animation Tools](Docs/Animation-Tools.md)** - Animation Blueprints, state machines, montage / sequence inspection
+- **[BehaviorTree Tools](Docs/BehaviorTree-Tools.md)** - Read-only inspection of BehaviorTree and Blackboard assets
 - **[Font Tools](Docs/Font-Tools.md)** - Font generation and management
 - **[StateTree Tools](Docs/StateTree-Tools.md)** - AI behavior design with StateTree
 - **[PCG Tools](Docs/PCG-Tools.md)** - Procedural Content Generation graph creation and execution
@@ -220,7 +229,7 @@ The project uses a **dual-component synchronized architecture** enabling natural
 ```
 AI Assistant (Claude/Cursor/Windsurf)
     ↓ [MCP Protocol]
-Python MCP Servers (15 specialized FastMCP servers)
+Python MCP Servers (16 specialized FastMCP servers)
     ↓ [TCP/JSON on localhost:55557]
 C++ Plugin (UnrealMCP EditorSubsystem)
     ↓ [Direct Unreal Engine API]
@@ -237,7 +246,7 @@ Unreal Engine 5.7 Editor
 - **Modular Architecture** with strict 1000-line file size limit for maintainability
 
 **Python MCP Servers** ([Python/](Python/))
-- **14 Specialized Servers**: blueprint, editor, umg, node, datatable, project, blueprint_action, material, niagara, sound, animation, font, statetree, pcg
+- **16 Specialized Servers**: blueprint, editor, umg, node, datatable, project, blueprint_action, material, niagara, sound, animation, font, statetree, pcg, mesh, behaviortree
 - Each server has dedicated tool implementations in `*_tools/` folders
 - Shared utilities for TCP communication, Blueprint operations, UMG, and more
 - FastMCP-based implementation of Model Context Protocol
@@ -280,6 +289,7 @@ unreal-mcp/
 │   ├── statetree_mcp_server.py       # StateTree AI server
 │   ├── pcg_mcp_server.py            # PCG procedural generation server
 │   ├── mesh_mcp_server.py           # Static Mesh LOD & properties server
+│   ├── behaviortree_mcp_server.py    # BehaviorTree + Blackboard inspection (read-only)
 │   ├── *_tools/                      # Tool implementations
 │   ├── utils/                        # Shared utilities
 │   └── scripts/                      # Test scripts

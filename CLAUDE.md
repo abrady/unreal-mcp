@@ -488,6 +488,8 @@ UNREAL_PORT = 55557
 | `blueprint_action_mcp_server.py` | Action discovery, node creation, pin inspection | `Commands/BlueprintAction/` |
 | `statetree_mcp_server.py` | StateTree creation, states, transitions, tasks, conditions, evaluators, bindings | `Commands/StateTree/` |
 | `mesh_mcp_server.py` | Static Mesh LOD management, metadata, auto-generation, screen sizes | `Commands/Mesh/` |
+| `animation_mcp_server.py` | Animation Blueprint creation; **AnimMontage / AnimSequence read-only inspection** (sections, slots, notifies, sync markers) | `Commands/Animation/` |
+| `behaviortree_mcp_server.py` | **Read-only inspection** of BehaviorTree node trees and Blackboard keys (neither asset class is a UBlueprint, so `find_in_blueprints` cannot reach them) | `Commands/BehaviorTree/` |
 
 **These `*_mcp_server.py` files contain the `@app.tool()` decorated functions that Claude/AI assistants actually call.**
 

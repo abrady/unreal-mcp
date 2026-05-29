@@ -12,6 +12,7 @@ Editor tools enable you to:
 - Control lights and their properties
 - Spawn Blueprint actors with custom logic
 - Manage the editor viewport and focus
+- **Dump any asset's T3D text** for inspection (universal fallback for asset types that don't have a typed metadata tool yet)
 
 ## Natural Language Usage Examples
 
@@ -333,6 +334,38 @@ Use: *"Set the 'MainLight' intensity to 8000 and attenuation radius to 1500"*
 - Setting up complex lighting scenarios
 - Testing Blueprint actor spawning and deletion
 - Creating stress test environments
+
+## Asset Inspection
+
+### `dump_asset`
+
+Universal fallback for inspecting any Unreal asset that does not yet have a dedicated metadata tool. Runs `UExporter::ExportToOutputDevice` in `"copy"` format — the same T3D text Unreal writes when you select an asset and press Ctrl-C / Cmd-C.
+
+Useful for: peeking at AnimMontage `CompositeSections` and `Notifies` arrays, dumping a `UMaterial`'s expression graph, walking a `UStaticMesh`'s `BodySetup`, etc.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `asset_path` | string | ✅ | Full package path including the object name after the dot, e.g. `"/Game/Animations/AM_Attack.AM_Attack"`. |
+
+Returns:
+- `success` — whether export succeeded
+- `asset_path` — echo of the requested path
+- `class` — full class path of the loaded object
+- `dump` — raw T3D text (`Begin Object Class=... End Object`)
+- `length` / `original_length` — byte lengths of the returned vs. pre-truncation dump
+- `truncated` — `true` if the dump exceeded 256KB and was clipped
+- `error` — set if the asset couldn't be loaded or the class is unsupported
+
+**Notes:**
+- `UWorld` assets are rejected explicitly (their T3D output is enormous; use the level-specific tools instead).
+- Output is hard-capped at 256KB to stay within the TCP buffer; if your asset is bigger you'll get `truncated=true` and the first 256KB.
+
+**Example:**
+```
+dump_asset(asset_path="/Game/Animations/AM_Attack.AM_Attack")
+```
+
+---
 
 ## Error Handling and Troubleshooting
 

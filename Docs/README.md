@@ -30,6 +30,16 @@ Create and manage Animation Blueprints, state machines, and animation variables
 - Configure animation slots for montage playback
 - Connect AnimGraph nodes to output pose
 - Link animation layers for modular animation logic
+- **Inspect AnimMontages** — section flow, slot tracks, AnimNotify / NotifyState events
+- **Inspect AnimSequences** — length, skeleton, notifies, sync markers
+
+### 🌲 [BehaviorTree Tools](BehaviorTree-Tools.md)
+Read-only inspection of BehaviorTree assets and their Blackboards (neither is a `UBlueprint`, so `find_in_blueprints` can't reach them)
+- Recursive node-tree dump from `UBehaviorTree::RootNode`
+- Per-child decorator chains + decorator-logic ops
+- Surface source-Blueprint paths for `BTT_*` / `BTD_*` / `BTS_*` Blueprint nodes
+- `WITH_EDITOR` static descriptions when available
+- Blackboard key dump with canonical type names, parent-chain walk, inheritance annotations
 
 ### 🎮 [Blueprint Tools](Blueprint-Tools.md)
 Create and manage Blueprint classes, components, variables, and game logic

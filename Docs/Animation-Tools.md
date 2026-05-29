@@ -7,6 +7,8 @@ This document provides comprehensive information about using Animation Blueprint
 Animation tools enable you to:
 - Create Animation Blueprints with custom skeleton and parent class
 - Inspect Animation Blueprint metadata (variables, state machines, AnimGraph nodes)
+- **Inspect Animation Montage internals** (sections, slot tracks, AnimNotify / AnimNotifyState events)
+- **Inspect Animation Sequence internals** (length, skeleton, notifies, sync markers)
 - Create state machines for organizing animation states and transitions
 - Add states with animation assets (sequences, blend spaces)
 - Configure transitions between states with different rule types and blend durations
@@ -57,6 +59,16 @@ Animation tools enable you to:
 "Link the combat animation layer interface to ABP_Player"
 ```
 
+### Inspecting Montages and Sequences
+
+```
+"Dump the sections and AnimNotifies on /Game/Animations/AM_Attack — I want to see the WindUp/Active/Recovery layout"
+
+"What sync markers does the locomotion run sequence have?"
+
+"Show me every Notify on AM_Slam and the trigger time of each"
+```
+
 ## Tool Reference
 
 ---
@@ -93,6 +105,49 @@ Get metadata from an Animation Blueprint — variables, state machines, AnimGrap
 | `anim_blueprint_name` | string | ✅ | Name of the Animation Blueprint |
 
 Returns state machines with their states, entry state, transitions (including blend duration and rule type), all AnimGraph nodes with positions and root connection status, and linked animation layers.
+
+---
+
+### `get_anim_montage_metadata`
+
+Read-only. Dump the structural contents of a `UAnimMontage`: section flow, slot animation tracks, and AnimNotify / AnimNotifyState events. Useful for understanding how an attack montage encodes its `WindUp → Active → Recovery` phases and which notifies open / close damage windows.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `montage_path` | string | ✅ | Full asset path (`"/Game/.../AM_Foo.AM_Foo"`) or bare asset name. Path form is preferred. |
+
+Returns `{ success, metadata: { ... } }`. The `metadata` object contains:
+
+- Top-level: `name`, `path`, `skeleton_path`, `play_length`, `rate_scale`, `group_name`, `blend_in_time`, `blend_out_time`, `blend_out_trigger_time`, `num_sections`, `num_slots`, `num_notifies`.
+- `sections[]`: each `{ section_index, name, next_section_name, start_time, end_time, length }` (sections are the named jump targets `Montage_JumpToSection` uses).
+- `slots[]`: each `{ slot_name, segments: [{ anim_reference, anim_reference_name, start_pos, anim_start_time, anim_end_time, play_rate, loop_count }] }`.
+- `notifies[]`: each `{ notify_name, trigger_time, duration, end_trigger_time, track_index, is_state, notify_class, notify_class_short, montage_tick_type, linked_sequence }`. `is_state` is true for `AnimNotifyState` (ranged) events; `duration` is non-zero for those.
+
+**Example:**
+```
+get_anim_montage_metadata(
+  montage_path="/Game/Animations/AM_Attack.AM_Attack"
+)
+```
+
+---
+
+### `get_anim_sequence_metadata`
+
+Read-only. Dump a `UAnimSequence` clip's length, skeleton, notifies, and authored sync markers. The notify shape is identical to `get_anim_montage_metadata`'s notifies so callers can reuse parsing code.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sequence_path` | string | ✅ | Full asset path or bare asset name. |
+
+Returns `{ success, metadata: { name, path, skeleton_path, play_length, rate_scale, additive_anim_type, num_notifies, num_sync_markers, notifies: [...], sync_markers: [{ name, time, track_index }] } }`.
+
+**Example:**
+```
+get_anim_sequence_metadata(
+  sequence_path="/Game/Characters/Player/MainCharacter_Run.MainCharacter_Run"
+)
+```
 
 ---
 
