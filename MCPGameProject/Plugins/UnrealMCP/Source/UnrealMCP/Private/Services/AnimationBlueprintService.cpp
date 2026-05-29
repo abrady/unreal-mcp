@@ -2,6 +2,9 @@
 #include "Animation/AnimBlueprint.h"
 #include "Animation/AnimBlueprintGeneratedClass.h"
 #include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
+#include "Animation/AnimNotifies/AnimNotify.h"
+#include "Animation/AnimNotifies/AnimNotifyState.h"
 #include "Animation/Skeleton.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimStateMachineTypes.h"
@@ -932,4 +935,244 @@ UAnimStateNode* FAnimationBlueprintService::FindStateNode(UAnimationStateMachine
     }
 
     return nullptr;
+}
+
+// ============================================================================
+// Animation Montage Metadata
+// ============================================================================
+
+UAnimMontage* FAnimationBlueprintService::FindAnimMontage(const FString& MontageName)
+{
+    if (MontageName.IsEmpty())
+    {
+        return nullptr;
+    }
+
+    // Treat /Game/... and /Script/... as direct asset paths.
+    if (MontageName.StartsWith(TEXT("/Game/")) || MontageName.StartsWith(TEXT("/Script/")))
+    {
+        return LoadObject<UAnimMontage>(nullptr, *MontageName);
+    }
+
+    // Fall back to asset-registry name match.
+    FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+    IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
+
+    TArray<FAssetData> AssetDataList;
+    AssetRegistry.GetAssetsByClass(UAnimMontage::StaticClass()->GetClassPathName(), AssetDataList);
+
+    for (const FAssetData& AssetData : AssetDataList)
+    {
+        if (AssetData.AssetName.ToString() == MontageName)
+        {
+            return Cast<UAnimMontage>(AssetData.GetAsset());
+        }
+    }
+
+    return nullptr;
+}
+
+bool FAnimationBlueprintService::GetAnimMontageMetadata(UAnimMontage* Montage, TSharedPtr<FJsonObject>& OutMetadata)
+{
+    if (!Montage)
+    {
+        return false;
+    }
+
+    OutMetadata = MakeShared<FJsonObject>();
+
+    // Top-level fields
+    OutMetadata->SetStringField(TEXT("name"), Montage->GetName());
+    OutMetadata->SetStringField(TEXT("path"), Montage->GetPathName());
+    OutMetadata->SetStringField(TEXT("skeleton_path"), Montage->GetSkeleton() ? Montage->GetSkeleton()->GetPathName() : TEXT(""));
+    OutMetadata->SetNumberField(TEXT("play_length"), Montage->GetPlayLength());
+    OutMetadata->SetNumberField(TEXT("rate_scale"), Montage->RateScale);
+    OutMetadata->SetStringField(TEXT("group_name"), Montage->GetGroupName().ToString());
+    OutMetadata->SetNumberField(TEXT("blend_in_time"), Montage->BlendIn.GetBlendTime());
+    OutMetadata->SetNumberField(TEXT("blend_out_time"), Montage->BlendOut.GetBlendTime());
+    OutMetadata->SetNumberField(TEXT("blend_out_trigger_time"), Montage->BlendOutTriggerTime);
+    OutMetadata->SetNumberField(TEXT("num_sections"), Montage->CompositeSections.Num());
+    OutMetadata->SetNumberField(TEXT("num_slots"), Montage->SlotAnimTracks.Num());
+    OutMetadata->SetNumberField(TEXT("num_notifies"), Montage->Notifies.Num());
+
+    // Sections
+    TArray<TSharedPtr<FJsonValue>> SectionsArray;
+    for (int32 SectionIndex = 0; SectionIndex < Montage->CompositeSections.Num(); ++SectionIndex)
+    {
+        const FCompositeSection& Section = Montage->CompositeSections[SectionIndex];
+        float StartTime = 0.0f;
+        float EndTime = 0.0f;
+        Montage->GetSectionStartAndEndTime(SectionIndex, StartTime, EndTime);
+
+        TSharedPtr<FJsonObject> SectionObj = MakeShared<FJsonObject>();
+        SectionObj->SetNumberField(TEXT("section_index"), SectionIndex);
+        SectionObj->SetStringField(TEXT("name"), Section.SectionName.ToString());
+        SectionObj->SetStringField(TEXT("next_section_name"), Section.NextSectionName.ToString());
+        SectionObj->SetNumberField(TEXT("start_time"), StartTime);
+        SectionObj->SetNumberField(TEXT("end_time"), EndTime);
+        SectionObj->SetNumberField(TEXT("length"), Montage->GetSectionLength(SectionIndex));
+        SectionsArray.Add(MakeShared<FJsonValueObject>(SectionObj));
+    }
+    OutMetadata->SetArrayField(TEXT("sections"), SectionsArray);
+
+    // Slots (each slot has its own AnimTrack of AnimSegments)
+    TArray<TSharedPtr<FJsonValue>> SlotsArray;
+    for (const FSlotAnimationTrack& Slot : Montage->SlotAnimTracks)
+    {
+        TSharedPtr<FJsonObject> SlotObj = MakeShared<FJsonObject>();
+        SlotObj->SetStringField(TEXT("slot_name"), Slot.SlotName.ToString());
+
+        TArray<TSharedPtr<FJsonValue>> SegArray;
+        for (const FAnimSegment& Segment : Slot.AnimTrack.AnimSegments)
+        {
+            TSharedPtr<FJsonObject> SegObj = MakeShared<FJsonObject>();
+            UAnimSequenceBase* AnimRef = Segment.GetAnimReference();
+            SegObj->SetStringField(TEXT("anim_reference"), AnimRef ? AnimRef->GetPathName() : TEXT(""));
+            SegObj->SetStringField(TEXT("anim_reference_name"), AnimRef ? AnimRef->GetName() : TEXT(""));
+            SegObj->SetNumberField(TEXT("start_pos"), Segment.StartPos);
+            SegObj->SetNumberField(TEXT("anim_start_time"), Segment.AnimStartTime);
+            SegObj->SetNumberField(TEXT("anim_end_time"), Segment.AnimEndTime);
+            SegObj->SetNumberField(TEXT("play_rate"), Segment.AnimPlayRate);
+            SegObj->SetNumberField(TEXT("loop_count"), Segment.LoopingCount);
+            SegArray.Add(MakeShared<FJsonValueObject>(SegObj));
+        }
+        SlotObj->SetArrayField(TEXT("segments"), SegArray);
+        SlotsArray.Add(MakeShared<FJsonValueObject>(SlotObj));
+    }
+    OutMetadata->SetArrayField(TEXT("slots"), SlotsArray);
+
+    // Notifies (and NotifyStates) — inherited from UAnimSequenceBase
+    TArray<TSharedPtr<FJsonValue>> NotifiesArray;
+    for (const FAnimNotifyEvent& Notify : Montage->Notifies)
+    {
+        TSharedPtr<FJsonObject> NotifyObj = MakeShared<FJsonObject>();
+        NotifyObj->SetStringField(TEXT("notify_name"), Notify.NotifyName.ToString());
+        NotifyObj->SetNumberField(TEXT("trigger_time"), Notify.GetTriggerTime());
+        NotifyObj->SetNumberField(TEXT("duration"), Notify.GetDuration());
+        NotifyObj->SetNumberField(TEXT("end_trigger_time"), Notify.GetEndTriggerTime());
+        NotifyObj->SetNumberField(TEXT("track_index"), Notify.TrackIndex);
+
+        const bool bIsState = Notify.NotifyStateClass != nullptr;
+        NotifyObj->SetBoolField(TEXT("is_state"), bIsState);
+
+        // NotifyStateClass and Notify are both instance pointers (poorly named).
+        // Resolve to the underlying UClass for the caller.
+        UClass* NotifyClass = nullptr;
+        if (bIsState)
+        {
+            NotifyClass = Notify.NotifyStateClass->GetClass();
+        }
+        else if (Notify.Notify)
+        {
+            NotifyClass = Notify.Notify->GetClass();
+        }
+        NotifyObj->SetStringField(TEXT("notify_class"), NotifyClass ? NotifyClass->GetPathName() : TEXT(""));
+        NotifyObj->SetStringField(TEXT("notify_class_short"), NotifyClass ? NotifyClass->GetName() : TEXT(""));
+
+        // Tick type only meaningful for NotifyStates.
+        NotifyObj->SetNumberField(TEXT("montage_tick_type"), static_cast<int32>(Notify.MontageTickType));
+
+        // Linked sequence (when notify is anchored to a per-segment timeline)
+        if (Notify.GetLinkedSequence())
+        {
+            NotifyObj->SetStringField(TEXT("linked_sequence"), Notify.GetLinkedSequence()->GetPathName());
+        }
+
+        NotifiesArray.Add(MakeShared<FJsonValueObject>(NotifyObj));
+    }
+    OutMetadata->SetArrayField(TEXT("notifies"), NotifiesArray);
+
+    return true;
+}
+
+// ============================================================================
+// Animation Sequence Metadata
+// ============================================================================
+
+UAnimSequence* FAnimationBlueprintService::FindAnimSequence(const FString& SequenceName)
+{
+    if (SequenceName.IsEmpty())
+    {
+        return nullptr;
+    }
+
+    if (SequenceName.StartsWith(TEXT("/Game/")) || SequenceName.StartsWith(TEXT("/Script/")))
+    {
+        return LoadObject<UAnimSequence>(nullptr, *SequenceName);
+    }
+
+    FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+    IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
+
+    TArray<FAssetData> AssetDataList;
+    AssetRegistry.GetAssetsByClass(UAnimSequence::StaticClass()->GetClassPathName(), AssetDataList);
+    for (const FAssetData& AssetData : AssetDataList)
+    {
+        if (AssetData.AssetName.ToString() == SequenceName)
+        {
+            return Cast<UAnimSequence>(AssetData.GetAsset());
+        }
+    }
+    return nullptr;
+}
+
+bool FAnimationBlueprintService::GetAnimSequenceMetadata(UAnimSequence* Sequence, TSharedPtr<FJsonObject>& OutMetadata)
+{
+    if (!Sequence)
+    {
+        return false;
+    }
+
+    OutMetadata = MakeShared<FJsonObject>();
+    OutMetadata->SetStringField(TEXT("name"), Sequence->GetName());
+    OutMetadata->SetStringField(TEXT("path"), Sequence->GetPathName());
+    OutMetadata->SetStringField(TEXT("skeleton_path"), Sequence->GetSkeleton() ? Sequence->GetSkeleton()->GetPathName() : TEXT(""));
+    OutMetadata->SetNumberField(TEXT("play_length"), Sequence->GetPlayLength());
+    OutMetadata->SetNumberField(TEXT("rate_scale"), Sequence->RateScale);
+    OutMetadata->SetNumberField(TEXT("additive_anim_type"), static_cast<int32>(Sequence->AdditiveAnimType));
+    OutMetadata->SetNumberField(TEXT("num_notifies"), Sequence->Notifies.Num());
+    OutMetadata->SetNumberField(TEXT("num_sync_markers"), Sequence->AuthoredSyncMarkers.Num());
+
+    // Notifies (same shape as montage notifies for consistency)
+    TArray<TSharedPtr<FJsonValue>> NotifiesArray;
+    for (const FAnimNotifyEvent& Notify : Sequence->Notifies)
+    {
+        TSharedPtr<FJsonObject> NotifyObj = MakeShared<FJsonObject>();
+        NotifyObj->SetStringField(TEXT("notify_name"), Notify.NotifyName.ToString());
+        NotifyObj->SetNumberField(TEXT("trigger_time"), Notify.GetTriggerTime());
+        NotifyObj->SetNumberField(TEXT("duration"), Notify.GetDuration());
+        NotifyObj->SetNumberField(TEXT("end_trigger_time"), Notify.GetEndTriggerTime());
+        NotifyObj->SetNumberField(TEXT("track_index"), Notify.TrackIndex);
+
+        const bool bIsState = Notify.NotifyStateClass != nullptr;
+        NotifyObj->SetBoolField(TEXT("is_state"), bIsState);
+        UClass* NotifyClass = nullptr;
+        if (bIsState)
+        {
+            NotifyClass = Notify.NotifyStateClass->GetClass();
+        }
+        else if (Notify.Notify)
+        {
+            NotifyClass = Notify.Notify->GetClass();
+        }
+        NotifyObj->SetStringField(TEXT("notify_class"), NotifyClass ? NotifyClass->GetPathName() : TEXT(""));
+        NotifyObj->SetStringField(TEXT("notify_class_short"), NotifyClass ? NotifyClass->GetName() : TEXT(""));
+
+        NotifiesArray.Add(MakeShared<FJsonValueObject>(NotifyObj));
+    }
+    OutMetadata->SetArrayField(TEXT("notifies"), NotifiesArray);
+
+    // Sync markers (often used by locomotion sequences for foot-plant matching).
+    TArray<TSharedPtr<FJsonValue>> SyncMarkersArray;
+    for (const FAnimSyncMarker& Marker : Sequence->AuthoredSyncMarkers)
+    {
+        TSharedPtr<FJsonObject> MarkerObj = MakeShared<FJsonObject>();
+        MarkerObj->SetStringField(TEXT("name"), Marker.MarkerName.ToString());
+        MarkerObj->SetNumberField(TEXT("time"), Marker.Time);
+        MarkerObj->SetNumberField(TEXT("track_index"), Marker.TrackIndex);
+        SyncMarkersArray.Add(MakeShared<FJsonValueObject>(MarkerObj));
+    }
+    OutMetadata->SetArrayField(TEXT("sync_markers"), SyncMarkersArray);
+
+    return true;
 }

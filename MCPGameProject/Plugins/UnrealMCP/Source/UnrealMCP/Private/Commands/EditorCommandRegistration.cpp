@@ -18,6 +18,7 @@
 #include "Commands/Editor/ImportTextureCommand.h"
 #include "Commands/Editor/GetPerformanceStatsCommand.h"
 #include "Commands/Editor/ExecuteConsoleCommandCommand.h"
+#include "Commands/Editor/DumpAssetCommand.h"
 #include "Commands/Editor/GetGPUStatsCommand.h"
 #include "Commands/Editor/GetSceneBreakdownCommand.h"
 #include "Commands/Editor/GetRenderingStatsCommand.h"
@@ -60,6 +61,7 @@ void FEditorCommandRegistration::RegisterAllCommands()
     RegisterAndTrackCommand(MakeShared<FImportTextureCommand>());
     RegisterAndTrackCommand(MakeShared<FGetPerformanceStatsCommand>());
     RegisterAndTrackCommand(MakeShared<FExecuteConsoleCommandCommand>());
+    RegisterAndTrackCommand(MakeShared<FDumpAssetCommand>());
     RegisterAndTrackCommand(MakeShared<FGetGPUStatsCommand>());
     RegisterAndTrackCommand(MakeShared<FGetSceneBreakdownCommand>());
     RegisterAndTrackCommand(MakeShared<FGetRenderingStatsCommand>());

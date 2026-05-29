@@ -15,6 +15,7 @@
 #include "Commands/SoundCommandRegistration.h"
 #include "Commands/PCGCommandRegistration.h"
 #include "Commands/MeshCommandRegistration.h"
+#include "Commands/BehaviorTreeCommandRegistration.h"
 #include "Services/BlueprintActionService.h"
 // Legacy adapter removed
 #include "Services/BlueprintService.h"
@@ -138,6 +139,9 @@ void FUnrealMCPMainDispatcher::RegisterAllCommands()
     // Register Mesh commands (LOD, metadata, properties)
     FMeshCommandRegistration::RegisterAllCommands();
 
+    // Register BehaviorTree + Blackboard read-only metadata commands
+    FBehaviorTreeCommandRegistration::RegisterAllBehaviorTreeCommands();
+
     UE_LOG(LogTemp, Log, TEXT("FUnrealMCPMainDispatcher::RegisterAllCommands: All command types registered"));
 }
 
@@ -183,6 +187,7 @@ void FUnrealMCPMainDispatcher::Shutdown()
     FAnimationCommandRegistration::UnregisterAllAnimationCommands();
     FStateTreeCommandRegistration::UnregisterAllStateTreeCommands();
     FMeshCommandRegistration::UnregisterAllCommands();
+    FBehaviorTreeCommandRegistration::UnregisterAllBehaviorTreeCommands();
 
     // Clear the entire registry
     FUnrealMCPCommandRegistry::Get().ClearRegistry();

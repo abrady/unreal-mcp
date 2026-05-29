@@ -149,6 +149,71 @@ async def get_anim_blueprint_metadata(anim_blueprint_name: str) -> Dict[str, Any
     return await send_tcp_command("get_anim_blueprint_metadata", params)
 
 
+@app.tool()
+async def get_anim_montage_metadata(montage_path: str) -> Dict[str, Any]:
+    """
+    Get structural metadata for an Animation Montage (UAnimMontage asset).
+
+    Read-only. Returns the sections, slot animation tracks, and notify/notify-state
+    events. Useful for understanding how a montage encodes attack phases
+    (e.g. WindUp -> Active -> Recovery sections with AnimNotifyState damage windows).
+
+    Args:
+        montage_path: Full asset path ("/Game/.../AM_Foo.AM_Foo") or bare asset
+                      name ("AM_Foo"). Path form is preferred.
+
+    Returns:
+        Dictionary containing:
+        - success: Whether retrieval was successful
+        - metadata: Object containing:
+            - name: Asset name
+            - path: Full asset path
+            - skeleton_path: Target skeleton asset path
+            - play_length: Total montage duration in seconds
+            - rate_scale: Playback rate multiplier
+            - group_name: Slot group (first slot's group) FName
+            - blend_in_time / blend_out_time: Blend durations in seconds
+            - blend_out_trigger_time: Time at which BlendOut auto-triggers
+            - num_sections / num_slots / num_notifies: Counts
+            - sections: Array of {section_index, name, next_section_name,
+                                  start_time, end_time, length}
+            - slots: Array of {slot_name, segments: [{anim_reference,
+                     anim_reference_name, start_pos, anim_start_time,
+                     anim_end_time, play_rate, loop_count}]}
+            - notifies: Array of {notify_name, trigger_time, duration,
+                       end_trigger_time, track_index, is_state, notify_class,
+                       notify_class_short, montage_tick_type, linked_sequence}
+
+    Examples:
+        get_anim_montage_metadata(montage_path="/Game/Animations/AM_Attack.AM_Attack")
+    """
+    return await send_tcp_command("get_anim_montage_metadata", {"montage_path": montage_path})
+
+
+@app.tool()
+async def get_anim_sequence_metadata(sequence_path: str) -> Dict[str, Any]:
+    """
+    Get structural metadata for a UAnimSequence (raw animation clip).
+
+    Read-only. Returns play length, skeleton, notifies, and authored sync
+    markers. The notify shape matches get_anim_montage_metadata's notifies so
+    callers can reuse parsing.
+
+    Args:
+        sequence_path: Full asset path ("/Game/.../MyAnim.MyAnim") or bare
+                       asset name.
+
+    Returns:
+        Dictionary containing:
+        - success
+        - metadata: { name, path, skeleton_path, play_length, rate_scale,
+                      additive_anim_type, num_notifies, num_sync_markers,
+                      notifies: [...same shape as montage notifies...],
+                      sync_markers: [ { name, time, track_index } ] }
+    """
+    return await send_tcp_command("get_anim_sequence_metadata", {"sequence_path": sequence_path})
+
+
 # ============================================================================
 # Animation Layers
 # ============================================================================

@@ -44,6 +44,14 @@ public:
     // Metadata
     virtual bool GetAnimBlueprintMetadata(UAnimBlueprint* AnimBlueprint, TSharedPtr<FJsonObject>& OutMetadata) override;
 
+    // Animation Montage Metadata (read-only)
+    virtual UAnimMontage* FindAnimMontage(const FString& MontageName) override;
+    virtual bool GetAnimMontageMetadata(UAnimMontage* Montage, TSharedPtr<FJsonObject>& OutMetadata) override;
+
+    // Animation Sequence Metadata (read-only)
+    virtual UAnimSequence* FindAnimSequence(const FString& SequenceName) override;
+    virtual bool GetAnimSequenceMetadata(UAnimSequence* Sequence, TSharedPtr<FJsonObject>& OutMetadata) override;
+
     // AnimGraph Node Connections
     virtual bool ConnectAnimGraphNodes(UAnimBlueprint* AnimBlueprint, const FString& SourceNodeName, const FString& TargetNodeName, const FString& SourcePinName, const FString& TargetPinName, FString& OutError) override;
 

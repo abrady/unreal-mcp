@@ -7,6 +7,8 @@
 #include "Commands/Animation/AddAnimTransitionCommand.h"
 #include "Commands/Animation/AddAnimVariableCommand.h"
 #include "Commands/Animation/GetAnimBlueprintMetadataCommand.h"
+#include "Commands/Animation/GetAnimMontageMetadataCommand.h"
+#include "Commands/Animation/GetAnimSequenceMetadataCommand.h"
 #include "Commands/Animation/ConfigureAnimSlotCommand.h"
 #include "Commands/Animation/ConnectAnimGraphNodesCommand.h"
 #include "Services/AnimationBlueprintService.h"
@@ -29,6 +31,8 @@ void FAnimationCommandRegistration::RegisterAllAnimationCommands()
     RegisterAddAnimTransitionCommand();
     RegisterAddAnimVariableCommand();
     RegisterGetAnimBlueprintMetadataCommand();
+    RegisterGetAnimMontageMetadataCommand();
+    RegisterGetAnimSequenceMetadataCommand();
     RegisterConfigureAnimSlotCommand();
     RegisterConnectAnimGraphNodesCommand();
 
@@ -96,6 +100,18 @@ void FAnimationCommandRegistration::RegisterAddAnimVariableCommand()
 void FAnimationCommandRegistration::RegisterGetAnimBlueprintMetadataCommand()
 {
     TSharedPtr<FGetAnimBlueprintMetadataCommand> Command = MakeShared<FGetAnimBlueprintMetadataCommand>(FAnimationBlueprintService::Get());
+    RegisterAndTrackCommand(Command);
+}
+
+void FAnimationCommandRegistration::RegisterGetAnimMontageMetadataCommand()
+{
+    TSharedPtr<FGetAnimMontageMetadataCommand> Command = MakeShared<FGetAnimMontageMetadataCommand>(FAnimationBlueprintService::Get());
+    RegisterAndTrackCommand(Command);
+}
+
+void FAnimationCommandRegistration::RegisterGetAnimSequenceMetadataCommand()
+{
+    TSharedPtr<FGetAnimSequenceMetadataCommand> Command = MakeShared<FGetAnimSequenceMetadataCommand>(FAnimationBlueprintService::Get());
     RegisterAndTrackCommand(Command);
 }
 

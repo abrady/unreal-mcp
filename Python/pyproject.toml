@@ -13,10 +13,19 @@ dependencies = [
   "requests"
 ]
 
+[project.optional-dependencies]
+test = [
+  "pytest>=8",
+]
+
 [build-system]
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 # The main server script is a single-file module
-py-modules = ["unreal_mcp_server"] 
+py-modules = ["unreal_mcp_server"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+

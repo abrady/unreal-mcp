@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Animation/AnimBlueprint.h"
 #include "Animation/AnimBlueprintGeneratedClass.h"
+#include "Animation/AnimMontage.h"
 #include "Dom/JsonObject.h"
 
 /**
@@ -249,6 +250,35 @@ public:
      * @return true if metadata was retrieved successfully
      */
     virtual bool GetAnimBlueprintMetadata(UAnimBlueprint* AnimBlueprint, TSharedPtr<FJsonObject>& OutMetadata) = 0;
+
+    // ============================================================================
+    // Animation Montage Metadata (read-only)
+    // ============================================================================
+
+    /**
+     * Find a UAnimMontage by name or full asset path.
+     * @param MontageName - Asset path ("/Game/...") or bare asset name
+     * @return Found Animation Montage or nullptr
+     */
+    virtual UAnimMontage* FindAnimMontage(const FString& MontageName) = 0;
+
+    /**
+     * Get structural metadata for an Animation Montage (sections, slots, notifies).
+     * @param Montage - Target Animation Montage
+     * @param OutMetadata - JSON object containing metadata
+     * @return true if metadata was retrieved successfully
+     */
+    virtual bool GetAnimMontageMetadata(UAnimMontage* Montage, TSharedPtr<FJsonObject>& OutMetadata) = 0;
+
+    /**
+     * Find a UAnimSequence by name or full asset path.
+     */
+    virtual class UAnimSequence* FindAnimSequence(const FString& SequenceName) = 0;
+
+    /**
+     * Get structural metadata for an Animation Sequence (length, skeleton, notifies, sync markers).
+     */
+    virtual bool GetAnimSequenceMetadata(class UAnimSequence* Sequence, TSharedPtr<FJsonObject>& OutMetadata) = 0;
 
     // ============================================================================
     // AnimGraph Node Connections

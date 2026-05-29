@@ -926,6 +926,45 @@ def register_editor_tools(mcp: FastMCP):
         return send_unreal_command("execute_console_command", {"command": command})
 
     @mcp.tool()
+    def dump_asset(
+        ctx: Context,
+        asset_path: str
+    ) -> Dict[str, Any]:
+        """
+        Dump any Unreal asset to T3D text using UExporter::ExportToOutputDevice("copy").
+
+        Universal fallback for asset types that don't have a dedicated metadata tool yet —
+        e.g. AnimMontage section/notify tracks, BehaviorTree node graphs, Material expressions.
+        Returns the raw "Begin Object Class=... End Object" text Unreal writes to the
+        clipboard when you Copy an asset in the editor.
+
+        Output is capped at 256KB; longer dumps are truncated with truncated=true.
+        UWorld assets are rejected (use level-specific tools instead).
+
+        Args:
+            asset_path: Full package path to the asset, e.g.
+                "/Game/Path/To/AM_Attack.AM_Attack" or
+                "/Game/AI/BT_Boss.BT_Boss".
+                The path must include the object name after the dot.
+
+        Returns:
+            Dictionary containing:
+            - success: Whether export succeeded
+            - asset_path: Echo of the requested path
+            - class: Full class path of the loaded object
+            - dump: T3D text (may be truncated)
+            - length: Length of the returned dump string
+            - original_length: Length before truncation
+            - truncated: True if the dump exceeded 256KB
+            - error: Set if asset could not be loaded or class is unsupported
+
+        Examples:
+            dump_asset(asset_path="/Game/Animations/AM_Attack.AM_Attack")
+            dump_asset(asset_path="/Game/AI/BT_Boss.BT_Boss")
+        """
+        return send_unreal_command("dump_asset", {"asset_path": asset_path})
+
+    @mcp.tool()
     def get_gpu_stats(ctx: Context) -> Dict[str, Any]:
         """
         Get per-pass GPU profiler breakdown.
@@ -1105,6 +1144,7 @@ def register_editor_tools(mcp: FastMCP):
     _help_registry.register(import_texture, category="assets")
     _help_registry.register(get_performance_stats, category="profiling")
     _help_registry.register(execute_console_command, category="profiling")
+    _help_registry.register(dump_asset, category="assets")
     _help_registry.register(get_gpu_stats, category="profiling")
     _help_registry.register(get_scene_breakdown, category="profiling")
     _help_registry.register(get_rendering_stats, category="profiling")

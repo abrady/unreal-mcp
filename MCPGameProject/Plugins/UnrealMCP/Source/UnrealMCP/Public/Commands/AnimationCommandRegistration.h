@@ -35,6 +35,8 @@ private:
     static void RegisterAddAnimTransitionCommand();
     static void RegisterAddAnimVariableCommand();
     static void RegisterGetAnimBlueprintMetadataCommand();
+    static void RegisterGetAnimMontageMetadataCommand();
+    static void RegisterGetAnimSequenceMetadataCommand();
     static void RegisterConfigureAnimSlotCommand();
     static void RegisterConnectAnimGraphNodesCommand();
 
